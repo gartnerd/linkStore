@@ -11,25 +11,27 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 
 struct icmpCount {
     int totalRecv;
     int rtt;
     int minRtt;
     int maxRtt;
-    char *remIp;
+    char remIp[24];
     struct icmpCount *link;
 };
 
 typedef struct icmpCount ic;
-char **str_split(char*, const char);
+ic *str_split(char*, const char);
 
 int main(int argc, const char * argv[]) {
     int c;
     char *remoteHost;
     extern char *optarg;
     extern int optind, optopt, opterr;
-    char** tokens;
+    ic *addrs;
+    const char delim = ',';
     
     // insert code here...
     printf("Hello, World!\n");
@@ -52,61 +54,36 @@ int main(int argc, const char * argv[]) {
     
     printf("remote host addresses %s\n", optarg);
     
-    tokens = str_split(optarg, ',');
+    addrs = str_split(optarg, delim);
     
-    if (tokens){
-        int i;
-        for (i = 0; *(tokens + i); i++){
-            printf("month=[%s]\n", *(tokens + i));
-            free(*(tokens + i));
-        }
-        printf("\n");
-        free(tokens);
+    while (addrs) {
+        printf("remote host is:%s\n", addrs->remIp);
+        addrs = addrs->link;
     }
-    
     return 0;
 }
     //parse the IP addresses and put them into the record structs
-char** str_split(char* a_str, const char a_delim)
+ic* str_split(char* a_str, const char a_delim)
 {
-    char** result    = 0;
-    size_t count     = 0;
-    char* tmp        = a_str;
-    char* last_comma = 0;
-    char delim[2];
-    delim[0] = a_delim;
-    delim[1] = 0;
-        
-    /* Count how many elements will be extracted. */
-    while (*tmp){
-        if (a_delim == *tmp){
-            count++;
-            last_comma = tmp;
+    ic *addrs;
+    ic *head = NULL;
+    char *token = NULL;
+    while ((token = strtok(a_str, &a_delim))) {
+        while (isspace(*token)) {
+            token++;
         }
-        tmp++;
-    }
+        addrs = (ic*)malloc(sizeof(struct icmpCount));
+        strcpy(addrs->remIp, token);
+        addrs->link = NULL;
         
-    /* Add space for trailing token. */
-    count += last_comma < (a_str + strlen(a_str) - 1);
-        
-    /* Add space for terminating null string so caller
-    knows where the list of returned strings ends. */
-    count++;
-        
-    result = malloc(sizeof(char*) * count);
-        
-    if (result){
-        size_t idx  = 0;
-        char* token = strtok(a_str, delim);
-            
-        while (token){
-            assert(idx < count);
-            *(result + idx++) = strdup(token);
-            token = strtok(0, delim);
+        if (head == NULL) {
+            head = addrs;
         }
-        assert(idx == count - 1);
-        *(result + idx) = 0;
+        else {
+            addrs->link = head;
+            head = addrs;
+        }
+        a_str = NULL;
     }
-        
-    return result;
+    return head;
 }
